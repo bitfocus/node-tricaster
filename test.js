@@ -1,4 +1,4 @@
-const TC = require("./xml");
+const TC = require("./index");
 
 const tc2 = new TC("10.20.102.30");
 
