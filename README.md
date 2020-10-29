@@ -1,9 +1,9 @@
 
-`$ yarn add @bitfocus/tricaster`
+`$ yarn add @bitfocusas/tricaster`
 
 Example:
 ```
-const TC = require("@bitfocus/tricaster");
+const TC = require("@bitfocusas/tricaster");
 
 const tc2 = new TC("10.20.102.30");
 
