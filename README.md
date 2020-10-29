@@ -1,3 +1,7 @@
+
+`$ yarn add @bitfocus/tricaster`
+
+Example:
 ```
 const TC = require("@bitfocus/tricaster");
 
