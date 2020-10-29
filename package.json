@@ -5,7 +5,7 @@
     "ws": "^7.3.1",
     "xml2js": "^0.4.23"
   },
-  "name": "@bitfocus/tricaster",
+  "name": "@bitfocusas/tricaster",
   "version": "1.0.0",
   "description": "Newtek Tricaster",
   "main": "index.js",
