@@ -7,14 +7,14 @@ const c = require('ansi-colors');
 
 class TC extends EventEmitter {
 
-  constructor(ip) {
-    super();
+	constructor(ip) {
+		super();
 		this.ip = ip;
 		this.debug = true;
 	}
 	
-  shortcutStatesIngest(states) {
-    states.forEach((state) => {
+	shortcutStatesIngest(states) {
+		states.forEach((state) => {
 
 			if (state["$"].name.match(/^swit45_/)) return
 			if (state["$"].name.match(/^minics_/)) return
@@ -23,17 +23,17 @@ class TC extends EventEmitter {
 			if (state["$"].name.match(/^strip[0-9]+_/)) return // mikserstriper, panel row assignment
 
 			if (
-        this.shortcut_states[state["$"].name] !== undefined &&
-        this.shortcut_states[state["$"].name].value !== state["$"].value
-      ) {
-        if (this.debug) console.log(
+				this.shortcut_states[state["$"].name] !== undefined &&
+				this.shortcut_states[state["$"].name].value !== state["$"].value
+			) {
+				if (this.debug) console.log(
 					//this.messageCount++ + "\t",
 					"edit>",
-          state["$"].name + ":\t",
+					state["$"].name + ":\t",
 					c.red(this.shortcut_states[state["$"].name].value),
 					">",
-          //c.green(state["$"].value),
-          "(" + state["$"].type + ")"
+					//c.green(state["$"].value),
+					"(" + state["$"].type + ")"
 				);	
 			} 
 			else if (this.shortcut_states[state["$"].name] === undefined) {
@@ -42,19 +42,19 @@ class TC extends EventEmitter {
 
 				if (this.debug && this.connecting === false) console.log(
 					//this.messageCount++ + "\t",
-          "new >",
-          state["$"].name,
-          "=",
-          //state["$"].value,
-          "(" + state["$"].type + ")"
-        );
+					"new >",
+					state["$"].name,
+					"=",
+					//state["$"].value,
+					"(" + state["$"].type + ")"
+				);
 
 			}
 			
 			const updateObject = {
-        //lastSender: state["$"].name,
-        type: state["$"].type,
-        value: state["$"].value,
+				//lastSender: state["$"].name,
+				type: state["$"].type,
+				value: state["$"].value,
 			}
 			
 			this.emit('variable', state["$"].name, updateObject)
@@ -75,23 +75,23 @@ class TC extends EventEmitter {
 
 	}
 
-  incomingData(data) {
+	incomingData(data) {
 
 		if (data.shortcut_states !== undefined) {
-      if (Array.isArray(data.shortcut_states)) {
-        data.shortcut_states.forEach((states) =>
-          this.shortcutStatesIngest(states.shortcut_state)
-        );
-      } else {
-        this.shortcutStatesIngest(data.shortcut_states.shortcut_state);
-      }
-    } else {
-      console.log(
-        "UNKNOWN INCOMING DATA",
-        util.inspect(data, false, null, true)
-      );
-    }
-  }
+			if (Array.isArray(data.shortcut_states)) {
+				data.shortcut_states.forEach((states) =>
+					this.shortcutStatesIngest(states.shortcut_state)
+				);
+			} else {
+				this.shortcutStatesIngest(data.shortcut_states.shortcut_state);
+			}
+		} else {
+			console.log(
+				"UNKNOWN INCOMING DATA",
+				util.inspect(data, false, null, true)
+			);
+		}
+	}
 	
 	variableSet(key, val, type = "") {
 		const msg = `<shortcut name="${key}" value="${val}" />\n`;
@@ -128,10 +128,10 @@ class TC extends EventEmitter {
 			clearInterval(this.keepalive);
 		}
 	}
-  connect() {
-    this.client = new Net.Socket();
+	connect() {
+		this.client = new Net.Socket();
 		this.client.setTimeout(3000)
-    this.inputBuffer = Buffer.from("");
+		this.inputBuffer = Buffer.from("");
 		this.messageCount = 0;
 		this.shortcut_states = {};
 		this.connecting = true;
@@ -162,47 +162,47 @@ class TC extends EventEmitter {
 		}
 
 
-    this.client.connect({ port: 5951, host: this.ip }, () => {
-      this.client.write(`<register name="NTK_states"/>\n`);
-    });
+		this.client.connect({ port: 5951, host: this.ip }, () => {
+			this.client.write(`<register name="NTK_states"/>\n`);
+		});
 
-    this.client.on("data", (inputData) => {
-      clearTimeout(this.errorTimer);
+		this.client.on("data", (inputData) => {
+			clearTimeout(this.errorTimer);
 
-      this.inputBuffer = Buffer.concat([this.inputBuffer, inputData]);
+			this.inputBuffer = Buffer.concat([this.inputBuffer, inputData]);
 
-      let results;
-      if (
-        (results = this.inputBuffer
-          .toString()
-          .match(
-            /<build number="(\d+)" product="([^"]+)" session="([^"]+)" \/>/
-          ))
-      ) {
-        if (results !== undefined && results !== null && results[0] !== null) {
+			let results;
+			if (
+				(results = this.inputBuffer
+					.toString()
+					.match(
+						/<build number="(\d+)" product="([^"]+)" session="([^"]+)" \/>/
+					))
+			) {
+				if (results !== undefined && results !== null && results[0] !== null) {
 					console.log("got build info", results)
 					this.inputBuffer = Buffer.from(
-            this.inputBuffer.toString().replace(results[0], "")
-          );
-        }
-      }
+						this.inputBuffer.toString().replace(results[0], "")
+					);
+				}
+			}
 
-      parseString(
-        Buffer.from("<root>" + this.inputBuffer.toString() + "</root>"),
-        (err, result) => {
-          if (!err) {
-            this.inputBuffer = Buffer.from("");
-            this.incomingData(result.root);
-          } else {
-            this.errorTimer = setTimeout(() => {
-              throw "Timeout getting a complete xml packet";
-            }, 500);
-          }
-        }
-      );
-    });
+			parseString(
+				Buffer.from("<root>" + this.inputBuffer.toString() + "</root>"),
+				(err, result) => {
+					if (!err) {
+						this.inputBuffer = Buffer.from("");
+						this.incomingData(result.root);
+					} else {
+						this.errorTimer = setTimeout(() => {
+							throw "Timeout getting a complete xml packet";
+						}, 500);
+					}
+				}
+			);
+		});
 
-    this.client.on("end", () => {
+		this.client.on("end", () => {
 			console.log("end")
 			this.emit('error', 'connection ended')
 			this.close();
@@ -221,7 +221,7 @@ class TC extends EventEmitter {
 		})
 	
 		
-  }
+	}
 }
 
 module.exports = exports = TC
