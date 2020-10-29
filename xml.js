@@ -4,61 +4,80 @@ const parseString = require("xml2js").parseString;
 const EventEmitter = require("events");
 const util = require("util");
 const c = require('ansi-colors');
-const { forEach } = require("lodash");
 
 class TC extends EventEmitter {
+
   constructor(ip) {
     super();
 		this.ip = ip;
 		this.debug = true;
-  }
+	}
+	
   shortcutStatesIngest(states) {
     states.forEach((state) => {
+
 			if (state["$"].name.match(/^swit45_/)) return
 			if (state["$"].name.match(/^minics_/)) return
 			if (state["$"].name.match(/^tcs_/)) return
+			if (state["$"].name.match(/^gemini/)) return
+			if (state["$"].name.match(/^strip[0-9]+_/)) return // mikserstriper, panel row assignment
 
 			if (
         this.shortcut_states[state["$"].name] !== undefined &&
         this.shortcut_states[state["$"].name].value !== state["$"].value
       ) {
         if (this.debug) console.log(
-					this.messageCount++ + "\t",
+					//this.messageCount++ + "\t",
 					"edit>",
           state["$"].name + ":\t",
 					c.red(this.shortcut_states[state["$"].name].value),
 					">",
-          c.green(state["$"].value),
+          //c.green(state["$"].value),
           "(" + state["$"].type + ")"
 				);	
 			} 
 			else if (this.shortcut_states[state["$"].name] === undefined) {
-        if (this.debug) console.log(
-					this.messageCount++ + "\t",
+
+				this.detectionData(state["$"].name)
+
+				if (this.debug && this.connecting === false) console.log(
+					//this.messageCount++ + "\t",
           "new >",
           state["$"].name,
           "=",
-          state["$"].value,
+          //state["$"].value,
           "(" + state["$"].type + ")"
         );
+
 			}
 			
 			const updateObject = {
-        lastSender: state["$"].name,
+        //lastSender: state["$"].name,
         type: state["$"].type,
         value: state["$"].value,
 			}
 			
-			this.emit('shortcut_state', state["$"].name, updateObject)
+			this.emit('variable', state["$"].name, updateObject)
 			this.shortcut_states[state["$"].name] = updateObject;
 			
-    });
-  }
+		});
+
+		if (this.connecting === true) {
+			this.connecting = false; 
+			Object.keys(this.shortcut_states).forEach(key => this.emit('variable', key, this.shortcut_states[key] ))
+			this.emit('ready')
+			this.keepalive = setInterval( () => { 
+				if (this.connecting === false) {
+					this.client.write(Buffer.from('\n'))
+				}
+			}, 1000)
+		}
+
+	}
 
   incomingData(data) {
-    this.emit("data", data);
 
-    if (data.shortcut_states !== undefined) {
+		if (data.shortcut_states !== undefined) {
       if (Array.isArray(data.shortcut_states)) {
         data.shortcut_states.forEach((states) =>
           this.shortcutStatesIngest(states.shortcut_state)
@@ -74,17 +93,74 @@ class TC extends EventEmitter {
     }
   }
 	
-	shortcutSet(key, val, type = "") {
+	variableSet(key, val, type = "") {
 		const msg = `<shortcut name="${key}" value="${val}" />\n`;
 		console.log("sending message", msg);
 		this.client.write(msg)
 	}
 
+	detectionData(key) {
+		const reg = new RegExp("^([^0-9]+)([0-9]*)_","i");
+		let match;
+		if (match = key.match(reg)) {
+			const dc = Object.keys(this.detectedCapabilities);
+			if (dc.indexOf(match[1]) >= 0) {
+				if (this.detectedCapabilities[match[1]] === false || this.detectedCapabilities[match[1]] === true) {
+					this.detectedCapabilities[match[1]] = true;
+				}
+				else {
+					if (parseInt(match[2]) > this.detectedCapabilities[match[1]]) {
+						this.detectedCapabilities[match[1]] = parseInt(match[2])
+					}
+				}
+			} else {
+				//console.log("irrelecvant", match[1])
+			}
+		}
+
+	}
+	close() {
+		if (this.client !== undefined && this.client.close !== undefined) {
+			this.client.close();
+		}
+		this.emit('close');
+		if (this.keepalive) {
+			clearInterval(this.keepalive);
+		}
+	}
   connect() {
     this.client = new Net.Socket();
-    this.shortcut_states = {};
+		this.client.setTimeout(3000)
     this.inputBuffer = Buffer.from("");
 		this.messageCount = 0;
+		this.shortcut_states = {};
+		this.connecting = true;
+		this.detectedCapabilities = {
+			v: 0,
+			ddr: 0,
+			bfr: 0,
+			main_mes_dsk: 0,
+			input: 0,
+			mix: 0,
+			out: 0,
+			gfx: 0,
+			stream: false,
+			titles: false,
+			talkback: false,
+			timewarp: false,
+			sound: false,
+			ptz: false,
+			previz: false,
+			net: false,
+			master: false,
+			main: false,
+			effects: false,
+			virtualinputs: false,
+			virtualinputs_dsk: 0,
+			media: 0,
+			aux: 0, // audio auxes
+		}
+
 
     this.client.connect({ port: 5951, host: this.ip }, () => {
       this.client.write(`<register name="NTK_states"/>\n`);
@@ -127,19 +203,26 @@ class TC extends EventEmitter {
     });
 
     this.client.on("end", () => {
-      console.log("Requested an end to the TCP connection");
-    });
+			console.log("end")
+			this.emit('error', 'connection ended')
+			this.close();
+		});
+
+		this.client.on("timeout", () => {
+			console.log("timeout")
+			this.emit('error', 'timeout')
+			this.close();
+		});
+
+		this.client.on('error', (err) => {
+			console.log("error",err)
+			this.emit('error', err)
+			this.close();
+		})
+	
+		
   }
 }
 
-const tc2 = new TC("10.20.102.30");
-tc2.on("data", (data) => {});
-tc2.on('shortcut_state', (key, obj) => {
-	//console.log("updating",key,"with object", obj);
-	if (key === 'preview_tally' && obj.value === "INPUT5") {
-		console.log("obj", obj.value);
+module.exports = exports = TC
 
-		tc2.shortcutSet("main_b_row_named_input", "INPUT1")
-	}
-});
-tc2.connect();
