@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "ansi-colors": "^4.1.1",
+    "debug": "^4.3.1",
     "lodash": "^4.17.20",
     "ws": "^7.3.1",
     "xml2js": "^0.4.23"
