@@ -94,7 +94,7 @@ class TC extends EventEmitter {
   }
 
   apiStateUpdate() {
-    console.log("dunno");
+    this.emit('update', this.shortcut_states)
   }
 
   setState(obj) {
