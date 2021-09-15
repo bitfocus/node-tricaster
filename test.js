@@ -1,6 +1,6 @@
 const TC = require("./index");
 
-const tc2 = new TC("10.20.10.180");
+const tc2 = new TC("10.40.222.198");
 
 tc2.on('variable', (key, obj) => {
 	console.log("["+key+"]:",obj)
